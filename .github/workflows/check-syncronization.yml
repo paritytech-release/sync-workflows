@@ -135,7 +135,7 @@ jobs:
             | jq -r '.object.sha')
           
           if [[ "$UPSTREAM_TIP" != "$FORK_TIP" ]]; then
-            echo -n "::warning title=Desynced tips on $BRANCH::"
+            echo -n "::warning title=Desynced tips on $REF::"
             echo -n "Mismatch between the tips of the upstream and the fork, "
             echo -n "$UPSTREAM_TIP and $FORK_TIP respectively. "
             echo "This run will be stopped."

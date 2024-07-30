@@ -1,0 +1,145 @@
+name: Syncronization checks for the release workflows
+on:
+  workflow_call:
+    inputs:
+      upstream_reader_app_id:
+        required: false
+        type: string
+      upstream_owner:
+        required: false
+        type: string
+      fork_reader_app_id:
+        required: false
+        type: string
+      fork_owner:
+        required: false
+        type: string
+    secrets:
+      upstream_reader_app_key:
+        required: false
+      fork_reader_app_key:
+        required: false   
+    outputs:
+      checks_passed:
+        description: Equal to 'true' if 1. the upstream/forks branches are synced, 2. caller is the fork
+        value: ${{ jobs.job_check_branches_sync.outputs.refs_synced }}
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  job_check_env_context:
+    runs-on: ubuntu-latest
+    outputs:
+      workflow_enabled: ${{ steps.workflow_enabled_step.outputs.workflow_enabled }}
+    steps:
+      - name: The workflow location check has not passed
+        id: warning_org
+        if: github.repository_owner != vars.RELEASE_ORG
+        run: |
+          echo -n "::warning title=Skipping the workflow::"
+          echo "This workflow run be stopped beacause this run is performed from a non-release GH org"
+
+      - name: The killswitch check has not passed
+        id: warning_killswitch
+        if: vars.RELEASES_ON != 'true'
+        run: |
+          echo -n "::warning title=Skipping the workflow::"
+          echo "This workflow run be stopped beacause the release killswitch for this repo/org is not set to 'true'"
+
+      - name: The release environment checks have been passed, setting the green light to other jobs
+        id: workflow_enabled_step
+        if: (github.repository_owner == vars.RELEASE_ORG && vars.RELEASES_ON == 'true')
+        run: echo "workflow_enabled=true" >> "$GITHUB_OUTPUT"
+
+  job_check_branches_sync:
+    runs-on: ubuntu-latest
+    needs: job_check_env_context
+    if: needs.job_check_env_context.outputs.workflow_enabled == 'true'
+    outputs:
+      refs_synced: ${{ steps.check_if_the_refs_synced.outputs.refs_synced }}
+    steps: 
+      - name: Generate Upstream Reader Token from the app (if any)
+        id: gen_upstream_reader_token
+        if: inputs.upstream_reader_app_id != ''
+        uses: actions/create-github-app-token@v1
+        with:
+            app-id: ${{ inputs.upstream_reader_app_id }}
+            private-key: ${{ secrets.upstream_reader_app_key }}
+            owner: ${{ inputs.upstream_owner }}
+
+      - name: Select Upstream Reader Token
+        id: get_upstream_reader_token
+        env:
+          APP_TOKEN: ${{ steps.gen_upstream_reader_token.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ -z "$APP_TOKEN" ]]; then
+            echo "token=$GH_TOKEN" >> "$GITHUB_OUTPUT"
+          else
+            echo "token=$APP_TOKEN" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate Fork Reader Token from the app (if any)
+        id: gen_fork_reader_token
+        if: inputs.fork_reader_app_id != ''
+        uses: actions/create-github-app-token@v1
+        with:
+            app-id: ${{ inputs.fork_reader_app_id }}
+            private-key: ${{ secrets.fork_reader_app_key }}
+            owner: ${{ inputs.fork_owner }}
+
+      - name: Select Fork Reader Token
+        id: get_fork_reader_token
+        env:
+          APP_TOKEN: ${{ steps.gen_fork_writer_token.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ -z "$APP_TOKEN" ]]; then
+            echo "token=$GH_TOKEN" >> "$GITHUB_OUTPUT"
+          else
+            echo "token=$APP_TOKEN" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Identify repos parameters
+        id: get_repo_params
+        env:
+          FORKED_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ steps.get_fork_reader_token.outputs.token }}
+        run: |
+          upstream_name=$(gh api repos/$FORKED_REPO  | jq -r ".source.full_name")
+          echo "Identified upstream name: $upstream_name"
+          echo "upstream_name=$upstream_name" >> "$GITHUB_OUTPUT"
+
+      - name: Check if the target ref is properly synced
+        id: check_if_the_refs_synced
+        env:
+          UPSTREAM_READ_TOKEN: ${{ steps.get_upstream_reader_token.outputs.token }}
+          FORK_READ_TOKEN: ${{ steps.get_fork_reader_token.outputs.token }}
+          FORKED_REPO: ${{ github.repository }}
+          UPSTREAM_REPO: ${{ steps.get_repo_params.outputs.upstream_name }}
+          REF: ${{ github.ref }}
+        run: |
+          export GH_TOKEN="$UPSTREAM_READ_TOKEN"
+          UPSTREAM_TIP=$(gh api --method GET \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/$UPSTREAM_REPO/git/$REF \
+            | jq -r '.object.sha')
+          
+          export GH_TOKEN="$FORK_READ_TOKEN"
+          FORK_TIP=$(gh api --method GET \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/$FORKED_REPO/git/$REF \
+            | jq -r '.object.sha')
+          
+          if [[ "$UPSTREAM_TIP" != "$FORK_TIP" ]]; then
+            echo -n "::warning title=Desynced tips on $BRANCH::"
+            echo -n "Mismatch between the tips of the upstream and the fork, "
+            echo -n "$UPSTREAM_TIP and $FORK_TIP respectively. "
+            echo "This run will be stopped."
+            echo "refs_synced=false" >> "$GITHUB_OUTPUT"
+          else 
+            echo "refs_synced=true" >> "$GITHUB_OUTPUT"
+          fi

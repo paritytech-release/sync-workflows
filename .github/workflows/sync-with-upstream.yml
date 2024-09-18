@@ -164,7 +164,7 @@ jobs:
 
             - name: Clean the branches in the fork, not exist in the source now
               id: clean_fork_branches
-              if: inputs.delete_non_matching_refs == 'true'
+              if: inputs.delete_non_matching_refs == true
               env:
                 GH_TOKEN: ${{ steps.get_fork_writer_token.outputs.token }}
                 FORKED_REPO: ${{ github.repository }}
@@ -302,7 +302,7 @@ jobs:
 
             - name: Remove tags in the fork, missing in the source
               id: clean_fork_tags
-              if: inputs.delete_non_matching_refs == 'true'
+              if: inputs.delete_non_matching_refs == true
               env:
                 GH_TOKEN: ${{ steps.get_fork_writer_token.outputs.token }}
                 FORKED_REPO: ${{ github.repository }}

@@ -124,22 +124,28 @@ jobs:
           UPSTREAM_TIP=$(gh api --method GET \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            /repos/$UPSTREAM_REPO/git/$REF \
+            /repos/$UPSTREAM_REPO/git/$REF 2>/dev/null \
             | jq -r '.object.sha')
           
           export GH_TOKEN="$FORK_READ_TOKEN"
           FORK_TIP=$(gh api --method GET \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            /repos/$FORKED_REPO/git/$REF \
+            /repos/$FORKED_REPO/git/$REF 2>/dev/null \
             | jq -r '.object.sha')
-          
-          if [[ "$UPSTREAM_TIP" != "$FORK_TIP" ]]; then
-            echo -n "::warning title=Desynced tips on $REF::"
-            echo -n "Mismatch between the tips of the upstream and the fork, "
-            echo -n "$UPSTREAM_TIP and $FORK_TIP respectively. "
-            echo "This run will be stopped."
-            echo "refs_synced=false" >> "$GITHUB_OUTPUT"
-          else 
+
+          if [[ "$UPSTREAM_TIP" == "null" ]]; then
+            echo -n "::notice title=Upstream ref doesn't exist::"
+            echo "This run was considered OK because the upstream ref $REF doesn't exist."
             echo "refs_synced=true" >> "$GITHUB_OUTPUT"
+          else
+            if [[ "$UPSTREAM_TIP" != "$FORK_TIP" ]]; then
+              echo -n "::warning title=Desynced tips on $REF::"
+              echo -n "Mismatch between the tips of the upstream and the fork, "
+              echo -n "$UPSTREAM_TIP and $FORK_TIP respectively. "
+              echo "This run will be stopped."
+              echo "refs_synced=false" >> "$GITHUB_OUTPUT"
+            else 
+              echo "refs_synced=true" >> "$GITHUB_OUTPUT"
+            fi
           fi

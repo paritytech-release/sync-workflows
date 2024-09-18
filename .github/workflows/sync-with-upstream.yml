@@ -14,6 +14,10 @@ on:
       fork_owner:
         required: false
         type: string
+      delete_non_matching_refs:
+        required: false
+        type: boolean
+        default: false
     secrets:
       upstream_reader_app_key:
         required: false
@@ -42,7 +46,7 @@ jobs:
             if: (github.repository_owner == vars.RELEASE_ORG)
             run: echo "workflow_enabled=true" >> "$GITHUB_OUTPUT"
 
-    job_sync_branches:
+    job_sync_refs:
         needs: job_check_env_context
         if: needs.job_check_env_context.outputs.workflow_enabled == 'true'
         runs-on: ubuntu-latest
@@ -111,6 +115,7 @@ jobs:
                 UPSTREAM_REPO: ${{ steps.get_repo_params.outputs.upstream_name }}
                 BRANCHES_TO_SYNC_EGREP_REGEX: ${{ vars.BRANCHES_TO_SYNC_EGREP_REGEX }}
                 MAIN_BRANCH: ${{ steps.get_repo_params.outputs.default_branch }}
+                REMOVE_REFS: ${{ inputs.delete_non_matching_refs }}
               run: |
                 cd /tmp
                 export GH_TOKEN="$UPSTREAM_READ_TOKEN"
@@ -126,8 +131,11 @@ jobs:
                     -H "X-GitHub-Api-Version: 2022-11-28" \
                     /repos/$FORKED_REPO/branches \
                   | jq -r '.[] | .name' | sort > fork_branches.txt
-
-                echo $(grep -x -v -f upstream_branches.txt fork_branches.txt > branches_deleted_list.txt)
+                if [[ $REMOVE_REFS == "true" ]]; then
+                  echo $(grep -x -v -f upstream_branches.txt fork_branches.txt > branches_deleted_list.txt)
+                else
+                  echo -n "" > branches_deleted_list.txt
+                fi
                 echo $(grep -E "$BRANCHES_TO_SYNC_EGREP_REGEX" upstream_branches.txt | \
                   grep -v -E "^$MAIN_BRANCH$" >> branches_synced_list.txt)
                 echo $(grep -x -v -f fork_branches.txt branches_synced_list.txt > branches_created_list.txt)
@@ -156,6 +164,7 @@ jobs:
 
             - name: Clean the branches in the fork, not exist in the source now
               id: clean_fork_branches
+              if: inputs.delete_non_matching_refs == true
               env:
                 GH_TOKEN: ${{ steps.get_fork_writer_token.outputs.token }}
                 FORKED_REPO: ${{ github.repository }}
@@ -255,6 +264,7 @@ jobs:
                 FORK_READ_WRITE_TOKEN: ${{ steps.get_fork_writer_token.outputs.token }}
                 FORKED_REPO: ${{ github.repository }}
                 UPSTREAM_REPO: ${{ steps.get_repo_params.outputs.upstream_name }}
+                REMOVE_REFS: ${{ inputs.delete_non_matching_refs }}
               run: |
                 cd /tmp
                 export GH_TOKEN="$UPSTREAM_READ_TOKEN"
@@ -271,7 +281,11 @@ jobs:
                     /repos/$FORKED_REPO/tags \
                   | jq -r '.[] | "\(.commit.sha)=\(.name)"' > fork_tags.txt
 
-                echo $(grep -x -v -f upstream_tags.txt fork_tags.txt > tags_deleted_list.txt)
+                if [[ $REMOVE_REFS == "true" ]]; then
+                  echo $(grep -x -v -f upstream_tags.txt fork_tags.txt > tags_deleted_list.txt)
+                else
+                  echo -n "" > tags_deleted_list.txt
+                fi
                 echo $(grep -x -v -f fork_tags.txt upstream_tags.txt > tags_created_list.txt)
               
                 echo "### Tags update" >> $GITHUB_STEP_SUMMARY
@@ -288,6 +302,7 @@ jobs:
 
             - name: Remove tags in the fork, missing in the source
               id: clean_fork_tags
+              if: inputs.delete_non_matching_refs == true
               env:
                 GH_TOKEN: ${{ steps.get_fork_writer_token.outputs.token }}
                 FORKED_REPO: ${{ github.repository }}

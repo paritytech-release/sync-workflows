@@ -360,6 +360,11 @@ jobs:
                 GH_TOKEN: ${{ github.token }}
               run: |
                 ls -alh
+                echo ===
+                find .github -name "*.yml" -type f 
+                echo ===
+                find .github -name "*.yml" -type f -exec grep -L "$RELEASE_ORG/" {} +
+                echo ===
                 for WF_FILE in $(find .github -name "*.yml" -type f -exec grep -L "$RELEASE_ORG/" {} +); do
                   WF_NAME=$(sed 's/\r//g' "$WF_FILE" | grep '^name:[[:space:]]+\K(.+)\r?$' -Po -m 1)
                   if [[ ! -z "$WF_NAME" ]]; then

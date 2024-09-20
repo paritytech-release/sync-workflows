@@ -357,7 +357,7 @@ jobs:
               env:
                 RELEASE_ORG: ${{ vars.RELEASE_ORG }}
                 FORKED_REPO: ${{ github.repository }}
-                GH_TOKEN: ${{ github.token }}
+                GH_TOKEN: ${{ steps.get_fork_writer_token.outputs.token }}
               run: |
                 for WF_FILE in $(find .github -name "*.yml" -type f -exec grep -L "$RELEASE_ORG/" {} +); do
                   WF_NAME=$(sed 's/\r//g' "$WF_FILE" | { grep '^name:[[:space:]]+\K(.+)\r?$' -Po -m 1 || true; })

@@ -363,7 +363,7 @@ jobs:
                   WF_NAME=$(sed 's/\r//g' "$WF_FILE" | { grep '^name:[[:space:]]+\K(.+)\r?$' -Po -m 1 || true; })
                   if [[ ! -z "$WF_NAME" ]]; then
                     echo -n "Disabling the Actions file '$WF_FILE' named '$WF_NAME'... "
-                    OUTPUT=$(gh workflow disable -R "$FORKED_REPO" "$WF_NAME" 2>&1)
+                    OUTPUT=$({ gh workflow disable -R "$FORKED_REPO" "$WF_NAME" 2>&1 || true; })
                     echo "done"
                   fi
                 done

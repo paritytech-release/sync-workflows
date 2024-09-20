@@ -359,16 +359,8 @@ jobs:
                 FORKED_REPO: ${{ github.repository }}
                 GH_TOKEN: ${{ github.token }}
               run: |
-                ls -alh
-                echo ===
-                find .github -name "*.yml" -type f 
-                echo ===
-                find .github -name "*.yml" -type f -exec grep -L "$RELEASE_ORG/" {} +
-                echo ===
                 for WF_FILE in $(find .github -name "*.yml" -type f -exec grep -L "$RELEASE_ORG/" {} +); do
-                  sed 's/\r//g' "$WF_FILE"
-                  sed 's/\r//g' "$WF_FILE" | grep '^name:[[:space:]]+\K(.+)\r?$' -Po -m 1
-                  WF_NAME=$(sed 's/\r//g' "$WF_FILE" | grep '^name:[[:space:]]+\K(.+)\r?$' -Po -m 1)
+                  WF_NAME=$(sed 's/\r//g' "$WF_FILE" | { grep '^name:[[:space:]]+\K(.+)\r?$' -Po -m 1 || true; })
                   if [[ ! -z "$WF_NAME" ]]; then
                     echo -n "Disabling the Actions file '$WF_FILE' named '$WF_NAME'... "
                     OUTPUT=$(gh workflow disable -R "$FORKED_REPO" "$WF_NAME" 2>&1)

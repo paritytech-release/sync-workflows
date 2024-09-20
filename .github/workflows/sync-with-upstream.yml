@@ -348,3 +348,22 @@ jobs:
                     echo "done"
                   fi
                 done
+
+            - name: Checkout the synced repo
+              uses: actions/checkout@v4
+            
+            - name: Automatically disable the actions which are not supposed to be executed in the fork
+              id: disable_upstream_actions
+              env:
+                RELEASE_ORG: ${{ vars.RELEASE_ORG }}
+                FORKED_REPO: ${{ github.repository }}
+                GH_TOKEN: ${{ github.token }}
+              run: |
+                for WF_FILE in $(find .github -name "*.yml" -type f -exec grep -L "$RELEASE_ORG/" {} +); do
+                  WF_NAME=$(sed 's/\r//g' "$WF_FILE" | grep '^name:[[:space:]]+\K(.+)\r?$' -Po -m 1)
+                  if [[ ! -z "$WF_NAME" ]]; then
+                    echo -n "Disabling the Actions file '$WF_FILE' named '$WF_NAME'... "
+                    OUTPUT=$(gh workflow disable -R "$FORKED_REPO" "$WF_NAME" 2>&1)
+                    echo "done"
+                  fi
+                done

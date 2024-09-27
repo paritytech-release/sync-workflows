@@ -359,13 +359,12 @@ jobs:
                 FORKED_REPO: ${{ github.repository }}
                 GH_TOKEN: ${{ steps.get_fork_writer_token.outputs.token }}
               run: |
+                echo "Enumerating active workflows..."
                 gh workflow list --all -R $FORKED_REPO --json name,state,id,path |\
                   jq -r '.[] | [.name, .state, .id, .path] | @tsv' |\
                   while IFS=$'\t' read -r WF_NAME WF_STATE WF_ID WF_PATH; do
-                    echo "$WF_NAME $WF_STATE $WF_ID"
                     if [[ $WF_STATE == "active" ]]; then
-                      ORG_MARK=$(grep "$RELEASE_ORG/"	"$WF_PATH" 2>/dev/null)
-                      if [[ -n "$ORG_MARK" ]]; then
+                      if (grep "$RELEASE_ORG/"	"$WF_PATH" 2>&1 > /dev/null); then
                         echo "Skipping release workflow '$WF_NAME'"
                       else
                         echo -n "Disabling the Actions Workflow '$WF_NAME'... "

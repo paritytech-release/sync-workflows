@@ -348,3 +348,28 @@ jobs:
                     echo "done"
                   fi
                 done
+
+            - name: Checkout the synced repo
+              uses: actions/checkout@v4
+            
+            - name: Automatically disable the actions which are not supposed to be executed in the fork
+              id: disable_upstream_actions
+              env:
+                RELEASE_ORG: ${{ vars.RELEASE_ORG }}
+                FORKED_REPO: ${{ github.repository }}
+                GH_TOKEN: ${{ steps.get_fork_writer_token.outputs.token }}
+              run: |
+                echo "Enumerating active workflows..."
+                gh workflow list --all -R $FORKED_REPO --json name,state,id,path |\
+                  jq -r '.[] | [.name, .state, .id, .path] | @tsv' |\
+                  while IFS=$'\t' read -r WF_NAME WF_STATE WF_ID WF_PATH; do
+                    if [[ $WF_STATE == "active" ]]; then
+                      if (grep "$RELEASE_ORG/"	"$WF_PATH" 2>&1 > /dev/null); then
+                        echo "Skipping release workflow '$WF_NAME'"
+                      else
+                        echo -n "Disabling the Actions Workflow '$WF_NAME'... "
+                        OUTPUT=$(gh workflow disable -R "$FORKED_REPO" "$WF_ID" 2>&1)
+                        echo "done"
+                      fi
+                    fi
+                  done

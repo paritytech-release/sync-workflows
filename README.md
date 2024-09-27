@@ -6,13 +6,17 @@ The workflows are used to sync the forked repos between the GH orgs.
 
 It is needed to execute the controlled sync between the upstream and the fork.
 
+This workflow also automatically disables the actions that are supposed to be executed in the upstream repo only. They are identified by missing the string in the workflow file, equal to the RELEASE_ORG variable. Simply speaking, which don't have invocation of the workflows stored in this repository.
+
 Inputs: see the "inputs" and "secrets" section of the code, they are related to a Github application(s) that are able to read the upstream and write the fork.
 
 A specific input is `delete_non_matching_refs`, boolean (no quotes), default is `false`. When is set to `true`, it means that the refs (branches/tags), which exist in the fork, but do not exist in the upstream, will be wiped.
 
 Omit the upstream code reader app part if you're sure that a standard GitHub token is OK (a public repos case). Fork writing app can't be omitted because of the undocumented Github API limitations, related to the `workflows: write` permission.
 
-The fork writer app must have the permissions: `contents: write` and the undocumented permission for the upstream merge API `workflows: write`.
+The fork writer app must have the permissions: 
+- `contents: write` and the undocumented permission for the upstream merge API `workflows: write`
+- `actions: write` to automatically disable the upstream actions in the fork
 
 Behaviour of the workflow is also controlled by the repo/org _variable_ `BRANCHES_TO_SYNC_EGREP_REGEX` - it defines which upstream branches should be in the fork. By default all the branches will be synced (not really good).
 

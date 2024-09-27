@@ -14,7 +14,9 @@ A specific input is `delete_non_matching_refs`, boolean (no quotes), default is 
 
 Omit the upstream code reader app part if you're sure that a standard GitHub token is OK (a public repos case). Fork writing app can't be omitted because of the undocumented Github API limitations, related to the `workflows: write` permission.
 
-The fork writer app must have the permissions: `contents: write` and the undocumented permission for the upstream merge API `workflows: write`.
+The fork writer app must have the permissions: 
+- `contents: write` and the undocumented permission for the upstream merge API `workflows: write`
+- `actions: write` to automatically disable the upstream actions in the fork
 
 Behaviour of the workflow is also controlled by the repo/org _variable_ `BRANCHES_TO_SYNC_EGREP_REGEX` - it defines which upstream branches should be in the fork. By default all the branches will be synced (not really good).
 

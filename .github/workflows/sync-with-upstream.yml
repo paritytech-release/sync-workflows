@@ -359,11 +359,17 @@ jobs:
                 FORKED_REPO: ${{ github.repository }}
                 GH_TOKEN: ${{ steps.get_fork_writer_token.outputs.token }}
               run: |
-                for WF_FILE in $(find .github -name "*.yml" -type f -exec grep -L "$RELEASE_ORG/" {} +); do
-                  WF_NAME=$(sed 's/\r//g' "$WF_FILE" | { grep '^name:[[:space:]]+\K(.+)\r?$' -Po -m 1 || true; })
-                  if [[ ! -z "$WF_NAME" ]]; then
-                    echo -n "Disabling the Actions file '$WF_FILE' named '$WF_NAME'... "
-                    OUTPUT=$({ gh workflow disable -R "$FORKED_REPO" "$WF_NAME" 2>&1 || true; })
-                    echo "done"
-                  fi
-                done
+                gh workflow list --all -R $FORKED_REPO --json name,state,id,path |\
+                  jq -r '.[] | [.name, .state, .id, .path] | @tsv' |\
+                  while IFS=$'\t' read -r WF_NAME WF_STATE WF_ID WF_PATH; do
+                    if [[ $WF_STATE == "active" ]]; then
+                      ORG_MARK=$(grep "$RELEASE_ORG/"	"$WF_PATH" 2>/dev/null)
+                      if [[ -n "$ORG_MARK" ]]; then
+                        echo "Skipping release workflow '$WF_NAME'"
+                      else
+                        echo -n "Disabling the Actions Workflow '$WF_NAME'... "
+                        OUTPUT=$(gh workflow disable -R "$FORKED_REPO" "$WF_ID" 2>&1)
+                        echo "done"
+                      fi
+                    fi
+                  done

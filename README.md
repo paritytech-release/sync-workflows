@@ -54,7 +54,7 @@ Must be called as a **job** with the `uses` directive. Example:
 ```yml
 jobs:
   check_syncronization:
-    uses: some-gh-org/repo/.github/workflows/sync-with-upstream.yml@main
+    uses: some-gh-org/repo/.github/workflows/check-syncronization.yml@main
   
   some_release_job:
     needs: check_syncronization

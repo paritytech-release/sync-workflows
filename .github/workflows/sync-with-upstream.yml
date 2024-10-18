@@ -18,6 +18,10 @@ on:
         required: false
         type: boolean
         default: false
+      environment: #environment to access the secrets on the repo
+        required: false
+        type: string
+        default: master
     secrets:
       upstream_reader_app_key:
         required: false
@@ -50,6 +54,7 @@ jobs:
         needs: job_check_env_context
         if: needs.job_check_env_context.outputs.workflow_enabled == 'true'
         runs-on: ubuntu-latest
+        environment: ${{ inputs.environment }}
         steps:
             - name: Generate Upstream Reader Token from the app (if any)
               id: gen_upstream_reader_token

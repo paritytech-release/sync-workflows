@@ -1,4 +1,4 @@
-name: Syncronization checks for the release workflows
+name: Synchronization checks for the release workflows
 on:
   workflow_call:
     inputs:
@@ -42,14 +42,14 @@ jobs:
         if: github.repository_owner != vars.RELEASE_ORG
         run: |
           echo -n "::warning title=Skipping the workflow::"
-          echo "This workflow run be stopped beacause this run is performed from a non-release GH org"
+          echo "This workflow run be stopped because this run is performed from a non-release GH org"
 
       - name: The killswitch check has not passed
         id: warning_killswitch
         if: vars.RELEASES_ON != 'true'
         run: |
           echo -n "::warning title=Skipping the workflow::"
-          echo "This workflow run be stopped beacause the release killswitch for this repo/org is not set to 'true'"
+          echo "This workflow run be stopped because the release killswitch for this repo/org is not set to 'true'"
 
       - name: The release environment checks have been passed, setting the green light to other jobs
         id: workflow_enabled_step

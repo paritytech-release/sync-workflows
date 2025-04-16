@@ -26,7 +26,11 @@ on:
       upstream_reader_app_key:
         required: false
       fork_writer_app_key:
-        required: false      
+        required: false
+    outputs:
+      branches_synced:
+        description: Equal to 'true' when the upstream/forks branches are synced
+        value: ${{ jobs.job_sync_refs.outputs.refs_synced }}
 
 concurrency:
   group: ${{ github.repository }}-${{ github.workflow }}
@@ -44,7 +48,7 @@ jobs:
               echo ::warning title=Workflow skipped::
               This workflow is skipped beacause this run
               is performed from a non-release GH org
-    
+
           - name: The release environment checks have been passed, other jobs to be executed
             id: workflow_enabled_step
             if: (github.repository_owner == vars.RELEASE_ORG)
@@ -55,6 +59,8 @@ jobs:
         if: needs.job_check_env_context.outputs.workflow_enabled == 'true'
         runs-on: ubuntu-latest
         environment: ${{ inputs.environment }}
+        outputs:
+          refs_synced: ${{ steps.sync_all_fork_branches.outputs.refs_synced }}
         steps:
             - name: Generate Upstream Reader Token from the app (if any)
               id: gen_upstream_reader_token
@@ -110,7 +116,7 @@ jobs:
                 echo "Identified default branch: $default_branch"
                 echo "upstream_name=$upstream_name" >> "$GITHUB_OUTPUT"
                 echo "default_branch=$default_branch" >> "$GITHUB_OUTPUT"
-            
+
             - name: Identifying what to do with the branches
               id: identifying_branches_actions
               env:
@@ -158,7 +164,7 @@ jobs:
                   echo "======"
                   echo ""
                 done
-              
+
             - name: Sync the Main/Master branch always first and separately
               id: sync_master_brach
               env:
@@ -184,7 +190,7 @@ jobs:
                       /repos/$FORKED_REPO/git/refs/heads/$BRANCH
                     echo "done"
                 done
-            
+
             - name: Create missing branches in the fork
               id: create_missing_fork_branches
               env:
@@ -214,7 +220,7 @@ jobs:
                     echo -n "::warning title=Unable to create a branch::"
                     echo -n "Unable to create a branch $BRANCH to $UPSTREAM_COMMIT. "
                     echo -n "Perhaps this commit doesn't exist in the fork yet or "
-                    echo  "the branch already exist?"  
+                    echo  "the branch already exist?"
                   else
                     echo "done"
                   fi
@@ -261,6 +267,7 @@ jobs:
                       -F "force=true" > /dev/null
                   fi
                 done
+                echo "refs_synced=true" >> "$GITHUB_OUTPUT"
 
             - name: Identify what to do with the tags
               id: identify_tags_actions
@@ -292,7 +299,7 @@ jobs:
                   echo -n "" > tags_deleted_list.txt
                 fi
                 echo $(grep -x -v -f fork_tags.txt upstream_tags.txt > tags_created_list.txt)
-              
+
                 echo "### Tags update" >> $GITHUB_STEP_SUMMARY
                 for FILE in tags_*_list.txt; do
                   ACTION=$(echo $FILE | cut -d '_' -f 2)
@@ -324,7 +331,7 @@ jobs:
                       /repos/$FORKED_REPO/git/refs/tags/$TAG_NAME
                     echo "done"
                 done
-            
+
             - name: Create missing tags in the fork
               id: create_missing_fork_tags
               env:
@@ -348,7 +355,7 @@ jobs:
                     echo -n "::warning title=Unable to create a tag::"
                     echo -n "Unable to create a tag $TAG_NAME to $TAG_SHA. "
                     echo -n "Perhaps this commit doesn't exist in the fork yet or "
-                    echo  "the tag already exist?"  
+                    echo  "the tag already exist?"
                   else
                     echo "done"
                   fi
@@ -356,7 +363,7 @@ jobs:
 
             - name: Checkout the synced repo
               uses: actions/checkout@v4
-            
+
             - name: Automatically disable the actions which are not supposed to be executed in the fork
               id: disable_upstream_actions
               env:

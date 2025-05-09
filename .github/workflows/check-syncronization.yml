@@ -154,3 +154,17 @@ jobs:
               echo "refs_synced=true" >> "$GITHUB_OUTPUT"
             fi
           fi
+
+  sync-forks-if-needed:
+    needs: job_check_branches_sync
+    if: needs.job_check_branches_sync.outputs.refs_synced == 'false'
+    uses: ./.github/workflows/sync-with-upstream.yml
+
+  confirm-sync:
+    runs-on: ubuntu-latest
+    needs: sync-forks-if-needed
+    if: needs.sync-forks-if-needed.outputs.branches_synced == 'true'
+    steps:
+      - name: Confirm sync
+        run: |
+          echo "refs_synced=true" >> "$GITHUB_OUTPUT"

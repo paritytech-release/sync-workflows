@@ -159,6 +159,11 @@ jobs:
     needs: job_check_branches_sync
     if: needs.job_check_branches_sync.outputs.refs_synced == 'false'
     uses: ./.github/workflows/sync-with-upstream.yml
+    with:
+      fork_writer_app_id: ${{ vars.UPSTREAM_CONTENT_SYNC_APP_ID }}
+      fork_owner: ${{ vars.RELEASE_ORG }}
+    secrets:
+      fork_writer_app_key: ${{ secrets.UPSTREAM_CONTENT_SYNC_APP_KEY }}
 
   confirm-sync:
     runs-on: ubuntu-latest

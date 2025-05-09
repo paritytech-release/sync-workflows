@@ -67,7 +67,7 @@ jobs:
       - name: Generate Upstream Reader Token from the app (if any)
         id: gen_upstream_reader_token
         if: inputs.upstream_reader_app_id != ''
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
             app-id: ${{ inputs.upstream_reader_app_id }}
             private-key: ${{ secrets.upstream_reader_app_key }}
@@ -88,7 +88,7 @@ jobs:
       - name: Generate Fork Reader Token from the app (if any)
         id: gen_fork_reader_token
         if: inputs.fork_reader_app_id != ''
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
             app-id: ${{ inputs.fork_reader_app_id }}
             private-key: ${{ secrets.fork_reader_app_key }}

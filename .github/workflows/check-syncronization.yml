@@ -23,6 +23,8 @@ on:
         required: false
       fork_reader_app_key:
         required: false
+      fork_writer_app_key:
+        required: false
     outputs:
       checks_passed:
         description: Equal to 'true' if 1. the upstream/forks branches are synced, 2. caller is the fork

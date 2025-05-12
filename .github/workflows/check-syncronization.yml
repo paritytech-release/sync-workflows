@@ -165,7 +165,7 @@ jobs:
       fork_writer_app_id: ${{ vars.UPSTREAM_CONTENT_SYNC_APP_ID }}
       fork_owner: ${{ vars.RELEASE_ORG }}
     secrets:
-      fork_writer_app_key: ${{ secrets.UPSTREAM_CONTENT_SYNC_APP_KEY }}
+      fork_writer_app_key: ${{ secrets.fork_writer_app_key }}
 
   confirm-sync:
     runs-on: ubuntu-latest

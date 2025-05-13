@@ -22,7 +22,9 @@ on:
       upstream_reader_app_key:
         required: false
       fork_reader_app_key:
-        required: false   
+        required: false
+      fork_writer_app_key:
+        required: false
     outputs:
       checks_passed:
         description: Equal to 'true' if 1. the upstream/forks branches are synced, 2. caller is the fork
@@ -63,11 +65,11 @@ jobs:
     environment: ${{ inputs.environment }}
     outputs:
       refs_synced: ${{ steps.check_if_the_refs_synced.outputs.refs_synced }}
-    steps: 
+    steps:
       - name: Generate Upstream Reader Token from the app (if any)
         id: gen_upstream_reader_token
         if: inputs.upstream_reader_app_id != ''
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
             app-id: ${{ inputs.upstream_reader_app_id }}
             private-key: ${{ secrets.upstream_reader_app_key }}
@@ -88,7 +90,7 @@ jobs:
       - name: Generate Fork Reader Token from the app (if any)
         id: gen_fork_reader_token
         if: inputs.fork_reader_app_id != ''
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
             app-id: ${{ inputs.fork_reader_app_id }}
             private-key: ${{ secrets.fork_reader_app_key }}
@@ -131,7 +133,7 @@ jobs:
             -H "X-GitHub-Api-Version: 2022-11-28" \
             /repos/$UPSTREAM_REPO/git/$REF 2>/dev/null \
             | jq -r '.object.sha')
-          
+
           export GH_TOKEN="$FORK_READ_TOKEN"
           FORK_TIP=$(gh api --method GET \
             -H "Accept: application/vnd.github+json" \
@@ -150,7 +152,26 @@ jobs:
               echo -n "$UPSTREAM_TIP and $FORK_TIP respectively. "
               echo "This run will be stopped."
               echo "refs_synced=false" >> "$GITHUB_OUTPUT"
-            else 
+            else
               echo "refs_synced=true" >> "$GITHUB_OUTPUT"
             fi
           fi
+
+  sync-forks-if-needed:
+    needs: job_check_branches_sync
+    if: needs.job_check_branches_sync.outputs.refs_synced == 'false'
+    uses: ./.github/workflows/sync-with-upstream.yml
+    with:
+      fork_writer_app_id: ${{ vars.UPSTREAM_CONTENT_SYNC_APP_ID }}
+      fork_owner: ${{ vars.RELEASE_ORG }}
+    secrets:
+      fork_writer_app_key: ${{ secrets.fork_writer_app_key }}
+
+  confirm-sync:
+    runs-on: ubuntu-latest
+    needs: sync-forks-if-needed
+    if: needs.sync-forks-if-needed.outputs.branches_synced == 'true'
+    steps:
+      - name: Confirm sync
+        run: |
+          echo "refs_synced=true" >> "$GITHUB_OUTPUT"

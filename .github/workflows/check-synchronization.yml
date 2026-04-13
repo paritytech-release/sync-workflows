@@ -18,6 +18,10 @@ on:
         required: false
         type: string
         default: master
+      concurrency_suffix: # optional suffix to make the concurrency group unique per caller
+        required: false
+        type: string
+        default: ''
     secrets:
       upstream_reader_app_key:
         required: false
@@ -31,7 +35,7 @@ on:
         value: ${{ jobs.job_check_branches_sync.outputs.refs_synced }}
 
 concurrency:
-  group: ${{ github.repository }}-${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.repository }}-${{ github.workflow }}-${{ github.ref }}${{ inputs.concurrency_suffix && format('-{0}', inputs.concurrency_suffix) || '' }}
 
 jobs:
   job_check_env_context:
